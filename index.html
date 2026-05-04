@@ -2,53 +2,6 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-<<<<<<< HEAD
-    <title>Web de Samuel Teran 🍺</title>
-    <style>
-        body {
-            background-color: white;
-            color: black;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            text-align: center;
-            user-select: none;
-        }
-
-        h1 {
-            font-size: 3.5rem;
-            margin-bottom: 20px;
-        }
-
-        #emoji-container {
-            font-size: 1.5rem;
-            line-height: 1.2;
-            cursor: pointer;
-            transition: transform 0.1s ease;
-            white-space: pre;
-            margin: 0 auto;
-            text-align: left;
-            width: fit-content;
-            min-width: 300px;
-            height: 160px;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-        }
-
-        pre:active {
-            transform: scale(1.1) rotate(5deg);
-        }
-
-        #mensaje {
-            font-size: 1.8rem;
-            margin-top: 40px;
-            min-height: 2.5rem;
-=======
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Samuel Terán | WEB </title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -144,123 +97,11 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
->>>>>>> f718ecc (web)
         }
     </style>
 </head>
 <body>
 
-<<<<<<< HEAD
-    <h1>Hola, sí, soy Sam 🍺</h1>
-
-    <pre id="emoji-container">
-.
- 😳
-/ | \. 
-  🍆   🍑___😫
-/. |.   //. LL.
-    </pre>
-
-    <div id="mensaje">Clickea los emojis</div>
-
-    <script>
-        let clicks = 0;
-        const container = document.getElementById('emoji-container');
-        const mensajeDiv = document.getElementById('mensaje');
-
-        // Lista extendida de frases
-        const frases = [
-            "Clickea los emojis",      // 0
-            "Oh si que rico",          // 1
-            "Sigue no pares",          // 2
-            "Mas mas mas",             // 3
-            "ya viene ya casi",        // 4
-            "oh siii",                 // 5
-            "No te detengas...",       // 6
-            "¡Duro!",                  // 7
-            "Eso es...",               // 8
-            "¡Increíble!",             // 9
-            "Aún más...",              // 10
-            "¡Casi está!",             // 11
-            "¡Siente eso!",            // 12
-            "¡Qué bien se siente!",    // 13
-            "¡Dale más!",              // 14
-            "¡Ufff!",                  // 15
-            "¡Ya casi llega!",         // 16
-            "¡A punto!",               // 17
-            "¡Últimos esfuerzos!",     // 18
-            "¡AQUÍ VIENE!",            // 19
-            "¡OH-UFFF FUUUCK! 😵‍💫",     // 20
-            "¡OH-UFFF FUUUCK! 😵💥",     // 21
-            "¡OH-UFFF FUUUCK! 😵🌋",     // 22
-            "Gracias por venir a mi Web, no me llames yo te llamo."// 23
-        ];
-
-        const fase0_inicial = `
-.
- 😳
-/ |L
-. 🍆💦🍑___😫
-/. |.   //. LL.`
-
-        const fase1 = `
-  😳
-  |\\\\
-   🍆🍑___😫
-/. |. //. LL.`
-
-        const fase2 = `
-  😮‍💨
- /|| 
- 🍆💦 🍑__😏
-/. |.   //. LL.`
-
-        const fase3 = `
-  😵
-  |\\\\ 💦💦💦
-  🍆🍑___😵‍💫
-/. |.//. LL.`
-
-        const fase4 = `
- 😴       😒
-/ |👍   🤏/|
- 💤        |
-/. |.     /.L.`
-
-        container.addEventListener('click', () => {
-            // Si ya estamos en la última frase, el siguiente clic reinicia todo
-            if (clicks >= 23) {
-                clicks = 0;
-                mensajeDiv.textContent = frases[0];
-                container.textContent = fase0_inicial;
-                return; // Salimos de la función para que no sume clic de nuevo inmediatamente
-            }
-
-            clicks++;
-
-            // Actualizar mensaje
-            if (clicks < frases.length) {
-                mensajeDiv.textContent = frases[clicks];
-            } else {
-                mensajeDiv.textContent = frases[frases.length - 1];
-            }
-
-            // Lógica de cambio de emojis
-            if (clicks >= 23) {
-                container.textContent = fase4;
-            } else if (clicks >= 20) {
-                container.textContent = fase3;
-            } else {
-                if (container.textContent.trim() === fase1.trim()) {
-                    container.textContent = fase2;
-                } else {
-                    container.textContent = fase1;
-                }
-            }
-        });
-    </script>
-
-=======
     <div id="canvas-container" class="fixed inset-0"></div>
 
     <div class="ui-layer">
@@ -439,6 +280,5 @@
 
         init();
     </script>
->>>>>>> f718ecc (web)
 </body>
 </html>
