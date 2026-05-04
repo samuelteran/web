@@ -36,22 +36,37 @@
             flex-direction: column;
             justify-content: space-between;
             padding: 3rem;
-            /* Añadimos el margen izquierdo solicitado (aprox 100px extra) */
+            /* Margen izquierdo para desktop */
             padding-left: calc(3rem + 100px); 
             z-index: 10;
         }
+        
+        /* Ajustes específicos para Celular */
         @media (max-width: 768px) {
-            .ui-layer { padding-left: 2rem; }
+            .ui-layer { 
+                padding-left: 1.5rem; 
+                padding-right: 1.5rem;
+                padding-top: 2rem;
+                justify-content: center;
+            }
+            h1 {
+                font-size: 3.5rem !important; 
+                line-height: 1 !important;
+            }
+            .description {
+                font-size: 1rem !important;
+                max-width: 100% !important;
+            }
+            .profile-img {
+                width: 50px !important;
+                height: 50px !important;
+                margin-bottom: 1.5rem !important;
+            }
         }
+
         .interactive {
             pointer-events: auto;
             cursor: pointer;
-        }
-        .signature {
-            font-weight: 200;
-            font-size: 1.2rem;
-            letter-spacing: 4px;
-            text-transform: uppercase;
         }
         .menu-btn {
             font-weight: 300;
@@ -105,8 +120,7 @@
     <div id="canvas-container" class="fixed inset-0"></div>
 
     <div class="ui-layer">
-        <div class="flex justify-between items-start" style="margin-left: -100px;"> <!-- Ajuste para el header -->
-            <div class="signature interactive">S. Terán</div>
+        <div class="flex justify-end items-start w-full">
             <div class="menu-btn interactive">Menu</div>
         </div>
 
@@ -144,21 +158,18 @@
             renderer.toneMappingExposure = 1.2;
             container.appendChild(renderer.domElement);
 
-            // Luces
             scene.add(new THREE.AmbientLight(0xffffff, 0.4));
             const light1 = new THREE.DirectionalLight(0xffffff, 1.2);
             light1.position.set(2, 2, 5);
             scene.add(light1);
 
-            // FONDO DE ESTRELLAS (ESPACIO)
+            // Estrellas
             const starsGeometry = new THREE.BufferGeometry();
             const starsCount = 2000;
             const posArray = new Float32Array(starsCount * 3);
-            
             for(let i = 0; i < starsCount * 3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 20; // Esparcir por el espacio
+                posArray[i] = (Math.random() - 0.5) * 20;
             }
-            
             starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
             const starsMaterial = new THREE.PointsMaterial({
                 size: 0.015,
@@ -167,22 +178,20 @@
                 opacity: 0.8,
                 blending: THREE.AdditiveBlending
             });
-            
             stars = new THREE.Points(starsGeometry, starsMaterial);
             scene.add(stars);
 
-            // CARGA DEL MODELO REAL
+            // Carga del modelo
             const loader = new THREE.GLTFLoader();
             loader.load('objeto3d/modelo.glb', (gltf) => {
                 if(model) scene.remove(model);
                 model = gltf.scene;
                 
-                // Centrar
                 const box = new THREE.Box3().setFromObject(model);
                 const center = box.getCenter(new THREE.Vector3());
                 model.position.sub(center); 
                 
-                model.scale.set(1.5, 1.5, 1.5);
+                applyResponsiveScale();
                 scene.add(model);
             }, undefined, (error) => {
                 setupPlaceholder();
@@ -195,10 +204,10 @@
                     color: 0xffffff, metalness: 0.9, roughness: 0.1, reflectivity: 1, clearcoat: 1
                 });
                 model = new THREE.Mesh(geometry, material);
+                applyResponsiveScale();
                 scene.add(model);
             }
 
-            // Eventos
             window.addEventListener('mousedown', () => isDragging = true);
             window.addEventListener('mouseup', () => isDragging = false);
             window.addEventListener('mousemove', handleMouseMove);
@@ -210,6 +219,17 @@
             window.addEventListener('touchmove', (e) => handleMouseMove(e.touches[0]));
 
             animate();
+        }
+
+        function applyResponsiveScale() {
+            if (!model) return;
+            const isMobile = window.innerWidth <= 768;
+            // ESCALA: 1.5 en desktop, 0.75 en móvil (50% menos)
+            const scale = isMobile ? 0.75 : 1.5; 
+            model.scale.set(scale, scale, scale);
+            
+            position.x = isMobile ? 0 : 1.2;
+            position.y = isMobile ? -0.5 : 0; // Ajuste leve de altura en móvil para no tapar texto
         }
 
         function handleMouseMove(e) {
@@ -229,27 +249,24 @@
                 posVelocity.x = deltaMove.x * 0.0025;
                 posVelocity.y = -deltaMove.y * 0.0025;
             }
-            previousMousePosition = { x: e.clientX, y: e.clientY };
+            previousMousePosition = { x: (e.clientX || e.pageX), y: (e.clientY || e.pageY) };
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            
-            // Animación sutil de estrellas
             if(stars) {
                 stars.rotation.y += 0.0002;
                 stars.rotation.x += 0.0001;
             }
-
             if (model) {
                 if (!isDragging) {
                     model.rotation.y += 0.003;
                     position.x += posVelocity.x;
                     position.y += posVelocity.y;
 
-                    // LÍMITES DE REBOTE AJUSTADOS (Antes para que no se "hunda")
-                    const xLimit = (window.innerWidth / 1000) * 2.0; 
-                    const yLimit = (window.innerHeight / 1000) * 1.6;
+                    const isMobile = window.innerWidth <= 768;
+                    const xLimit = isMobile ? (window.innerWidth / 1000) * 1.5 : (window.innerWidth / 1000) * 2.0; 
+                    const yLimit = isMobile ? (window.innerHeight / 1000) * 2.0 : (window.innerHeight / 1000) * 1.6;
 
                     if (Math.abs(position.x) > xLimit) {
                         posVelocity.x *= -0.85;
@@ -262,10 +279,8 @@
 
                     model.position.x = position.x;
                     model.position.y = position.y;
-                    
                     posVelocity.x *= 0.995;
                     posVelocity.y *= 0.995;
-                    
                     if(Math.abs(posVelocity.x) < 0.0005) posVelocity.x = 0.0005;
                 }
             }
@@ -276,6 +291,7 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
+            applyResponsiveScale();
         });
 
         init();
