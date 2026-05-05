@@ -36,18 +36,16 @@
             flex-direction: column;
             justify-content: space-between;
             padding: 3rem;
-            /* Margen izquierdo para desktop */
             padding-left: calc(3rem + 100px); 
             z-index: 10;
         }
         
-        /* Ajustes específicos para Celular */
         @media (max-width: 768px) {
             .ui-layer { 
                 padding-left: 1.5rem; 
                 padding-right: 1.5rem;
-                padding-top: 1.5rem; /* Reducido para que el menú suba */
-                justify-content: space-between; /* Mantiene el menú arriba y el texto abajo */
+                padding-top: 1.5rem;
+                justify-content: space-between;
             }
             h1 {
                 font-size: 3.5rem !important; 
@@ -61,9 +59,6 @@
                 width: 50px !important;
                 height: 50px !important;
                 margin-bottom: 1.5rem !important;
-            }
-            .header-mobile {
-                margin-top: 0.5rem;
             }
         }
 
@@ -123,8 +118,7 @@
     <div id="canvas-container" class="fixed inset-0"></div>
 
     <div class="ui-layer">
-        <!-- Header ajustado para subir el menú en móvil -->
-        <div class="flex justify-end items-start w-full header-mobile">
+        <div class="flex justify-end items-start w-full">
             <div class="menu-btn interactive">Menu</div>
         </div>
 
@@ -134,19 +128,29 @@
             </div>
             <h1 class="text-7xl mb-6">Samuel <br>Terán</h1>
             <p class="description text-lg leading-relaxed max-w-sm">
-                Hoy tras tu pantalla, mañana con unas cervezas en la playa. <br>
-                <span class="text-white font-light">Ingeniero electromecánico,</span> no se sabe qué hago pero se oye chido.
+                Hoy tras tu pantalla, mañana con unas cervezas en tu cama. <br>
+                <span class="font-inherit">Ingeniero electromecánico,</span> no se sabe qué hago pero se oye chido.
             </p>
         </div>
         <div></div>
     </div>
 
     <script>
-        let scene, camera, renderer, model, stars;
+        let scene, camera, renderer, stars;
         let isDragging = false;
         let previousMousePosition = { x: 0, y: 0 };
-        let position = { x: 1.2, y: 0 };
-        let posVelocity = { x: 0.003, y: 0.003 };
+        
+        let mainObject = {
+            mesh: null,
+            pos: { x: 1.2, y: 0 },
+            vel: { x: 0.003, y: 0.003 },
+            radius: 0.9, // Se recalculará dinámicamente al cargar el modelo
+            isMain: true
+        };
+
+        let cans = [];
+        const availableCans = ['lata1.glb', 'lata2.glb', 'lata3.glb', 'lata4.glb'];
+        const loader = new THREE.GLTFLoader();
         
         const container = document.getElementById('canvas-container');
 
@@ -162,55 +166,37 @@
             renderer.toneMappingExposure = 1.2;
             container.appendChild(renderer.domElement);
 
-            scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+            scene.add(new THREE.AmbientLight(0xffffff, 0.5));
             const light1 = new THREE.DirectionalLight(0xffffff, 1.2);
             light1.position.set(2, 2, 5);
             scene.add(light1);
 
-            // Estrellas
-            const starsGeometry = new THREE.BufferGeometry();
-            const starsCount = 2000;
-            const posArray = new Float32Array(starsCount * 3);
-            for(let i = 0; i < starsCount * 3; i++) {
-                posArray[i] = (Math.random() - 0.5) * 20;
-            }
-            starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-            const starsMaterial = new THREE.PointsMaterial({
-                size: 0.015,
-                color: 0xffffff,
-                transparent: true,
-                opacity: 0.8,
-                blending: THREE.AdditiveBlending
-            });
-            stars = new THREE.Points(starsGeometry, starsMaterial);
-            scene.add(stars);
+            setupStars();
 
-            // Carga del modelo
-            const loader = new THREE.GLTFLoader();
+            // Carga del modelo principal con centrado automático y cálculo de radio preciso
             loader.load('objeto3d/modelo.glb', (gltf) => {
-                if(model) scene.remove(model);
-                model = gltf.scene;
+                mainObject.mesh = gltf.scene;
                 
-                const box = new THREE.Box3().setFromObject(model);
-                const center = box.getCenter(new THREE.Vector3());
-                model.position.sub(center); 
+                // Centrar y calcular radio basado en el "Bounding Box" real
+                const box = new THREE.Box3().setFromObject(mainObject.mesh);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const center = new THREE.Vector3();
+                box.getCenter(center);
                 
+                mainObject.mesh.position.sub(center); // Centrar pivote
+                
+                // El radio es aproximadamente el promedio de las dimensiones para simplificar a esfera
+                const baseScale = 1.5;
+                mainObject.mesh.scale.set(baseScale, baseScale, baseScale);
+                mainObject.radius = (Math.max(size.x, size.y, size.z) / 2) * baseScale * 0.85; // 0.85 para un rebote más visual
+                
+                scene.add(mainObject.mesh);
                 applyResponsiveScale();
-                scene.add(model);
-            }, undefined, (error) => {
-                setupPlaceholder();
-            });
+            }, undefined, () => setupPlaceholder());
 
-            function setupPlaceholder() {
-                if(model) return;
-                const geometry = new THREE.IcosahedronGeometry(1.2, 0);
-                const material = new THREE.MeshPhysicalMaterial({ 
-                    color: 0xffffff, metalness: 0.9, roughness: 0.1, reflectivity: 1, clearcoat: 1
-                });
-                model = new THREE.Mesh(geometry, material);
-                applyResponsiveScale();
-                scene.add(model);
-            }
+            spawnCan();
+            setTimeout(spawnCan, 2500);
 
             window.addEventListener('mousedown', () => isDragging = true);
             window.addEventListener('mouseup', () => isDragging = false);
@@ -225,68 +211,218 @@
             animate();
         }
 
+        function setupStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsCount = 2000;
+            const posArray = new Float32Array(starsCount * 3);
+            for(let i = 0; i < starsCount * 3; i++) posArray[i] = (Math.random() - 0.5) * 20;
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            stars = new THREE.Points(starsGeometry, new THREE.PointsMaterial({
+                size: 0.015, color: 0xffffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
+            }));
+            scene.add(stars);
+        }
+
+        function setupObject(obj, scale, isCan = true) {
+            const box = new THREE.Box3().setFromObject(obj);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            
+            obj.position.sub(center); 
+            obj.scale.set(scale, scale, scale);
+            
+            // Retorna el radio calculado para la física
+            return (Math.max(size.x, size.y, size.z) / 2) * scale;
+        }
+
+        function setupPlaceholder() {
+            if(mainObject.mesh) return;
+            const geometry = new THREE.IcosahedronGeometry(1.2, 0);
+            mainObject.mesh = new THREE.Mesh(geometry, new THREE.MeshPhysicalMaterial({ color: 0xffffff, metalness: 0.9 }));
+            scene.add(mainObject.mesh);
+            mainObject.radius = 1.2;
+            applyResponsiveScale();
+        }
+
+        function spawnCan() {
+            if (cans.length >= 4) return;
+            const randomFile = availableCans[Math.floor(Math.random() * availableCans.length)];
+            const lifespan = Math.random() > 0.5 ? 10000 : 20000; 
+
+            loader.load('objeto3d/' + randomFile, (gltf) => {
+                const canMesh = gltf.scene;
+                const scale = window.innerWidth <= 768 ? 0.4 : 0.8;
+                const calculatedRadius = setupObject(canMesh, scale);
+                
+                const edge = Math.floor(Math.random() * 4);
+                let startX, startY, velX, velY;
+                const margin = 5;
+                switch(edge) {
+                    case 0: startX = -margin; startY = (Math.random() - 0.5) * margin; velX = 0.005 + Math.random() * 0.005; velY = (Math.random() - 0.5) * 0.01; break;
+                    case 1: startX = margin; startY = (Math.random() - 0.5) * margin; velX = -0.005 - Math.random() * 0.005; velY = (Math.random() - 0.5) * 0.01; break;
+                    case 2: startX = (Math.random() - 0.5) * margin; startY = margin; velX = (Math.random() - 0.5) * 0.01; velY = -0.005 - Math.random() * 0.005; break;
+                    case 3: startX = (Math.random() - 0.5) * margin; startY = -margin; velX = (Math.random() - 0.5) * 0.01; velY = 0.005 + Math.random() * 0.005; break;
+                }
+                cans.push({
+                    mesh: canMesh,
+                    pos: { x: startX, y: startY },
+                    vel: { x: velX, y: velY },
+                    radius: calculatedRadius * 0.9, // Ajuste para que el rebote se vea natural
+                    birthTime: Date.now(),
+                    lifespan: lifespan,
+                    isDying: false,
+                    isMain: false
+                });
+                scene.add(canMesh);
+            });
+        }
+
         function applyResponsiveScale() {
-            if (!model) return;
+            if (!mainObject.mesh) return;
             const isMobile = window.innerWidth <= 768;
             const scale = isMobile ? 0.75 : 1.5; 
-            model.scale.set(scale, scale, scale);
+            mainObject.mesh.scale.set(scale, scale, scale);
+            mainObject.pos.x = isMobile ? 0 : 1.2;
             
-            position.x = isMobile ? 0 : 1.2;
-            position.y = isMobile ? -0.5 : 0; 
+            // Recalcular radio para responsividad
+            const box = new THREE.Box3().setFromObject(mainObject.mesh);
+            const size = new THREE.Vector3();
+            box.getSize(size);
+            mainObject.radius = (Math.max(size.x, size.y, size.z) / 2) * 0.85;
         }
 
         function handleMouseMove(e) {
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
             const deltaMove = {
-                x: e.clientX - previousMousePosition.x,
-                y: e.clientY - previousMousePosition.y
+                x: clientX - (previousMousePosition.x || clientX),
+                y: clientY - (previousMousePosition.y || clientY)
             };
-
-            if (isDragging && model) {
+            if (isDragging && mainObject.mesh) {
                 const deltaRotationQuaternion = new THREE.Quaternion()
                     .setFromEuler(new THREE.Euler(
                         deltaMove.y * (Math.PI / 180) * 0.5,
                         deltaMove.x * (Math.PI / 180) * 0.5,
                         0, 'XYZ'
                     ));
-                model.quaternion.multiplyQuaternions(deltaRotationQuaternion, model.quaternion);
-                posVelocity.x = deltaMove.x * 0.0025;
-                posVelocity.y = -deltaMove.y * 0.0025;
+                mainObject.mesh.quaternion.multiplyQuaternions(deltaRotationQuaternion, mainObject.mesh.quaternion);
+                mainObject.vel.x = deltaMove.x * 0.0025;
+                mainObject.vel.y = -deltaMove.y * 0.0025;
             }
-            previousMousePosition = { x: (e.clientX || e.pageX), y: (e.clientY || e.pageY) };
+            previousMousePosition = { x: clientX, y: clientY };
+        }
+
+        // Resolución de colisión mejorada para evitar atravesar objetos
+        function resolveCollision(a, b) {
+            const dx = b.pos.x - a.pos.x;
+            const dy = b.pos.y - a.pos.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const minDistance = a.radius + b.radius;
+
+            if (distance < minDistance) {
+                // Vector normal de la colisión
+                const nx = dx / (distance || 1);
+                const ny = dy / (distance || 1);
+
+                // 1. Separar los objetos inmediatamente para que no se "peguen"
+                const overlap = minDistance - distance;
+                const separationFactor = 1.1; // Un pequeño extra para evitar bucles de colisión
+                
+                if (a.isMain || b.isMain) {
+                    const can = a.isMain ? b : a;
+                    const main = a.isMain ? a : b;
+                    
+                    // Empujar solo la lata fuera del modelo principal
+                    const sign = (a.isMain) ? 1 : -1;
+                    can.pos.x += nx * overlap * sign * separationFactor;
+                    can.pos.y += ny * overlap * sign * separationFactor;
+
+                    // 2. Respuesta de velocidad (Rebote elástico)
+                    const dot = can.vel.x * nx + can.vel.y * ny;
+                    // Solo rebota si se está moviendo HACIA el objeto
+                    if ((a.isMain && dot < 0) || (b.isMain && dot > 0)) {
+                        can.vel.x -= 2 * dot * nx;
+                        can.vel.y -= 2 * dot * ny;
+                    }
+                } else {
+                    // Colisión entre dos latas
+                    a.pos.x -= nx * overlap * 0.5 * separationFactor;
+                    a.pos.y -= ny * overlap * 0.5 * separationFactor;
+                    b.pos.x += nx * overlap * 0.5 * separationFactor;
+                    b.pos.y += ny * overlap * 0.5 * separationFactor;
+
+                    // Intercambio de velocidad simplificado
+                    const dotA = a.vel.x * nx + a.vel.y * ny;
+                    const dotB = b.vel.x * nx + b.vel.y * ny;
+
+                    a.vel.x -= (dotA - dotB) * nx;
+                    a.vel.y -= (dotA - dotB) * ny;
+                    b.vel.x -= (dotB - dotA) * nx;
+                    b.vel.y -= (dotB - dotA) * ny;
+                }
+            }
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            if(stars) {
-                stars.rotation.y += 0.0002;
-                stars.rotation.x += 0.0001;
-            }
-            if (model) {
-                if (!isDragging) {
-                    model.rotation.y += 0.003;
-                    position.x += posVelocity.x;
-                    position.y += posVelocity.y;
+            const now = Date.now();
+            if(stars) stars.rotation.y += 0.0002;
 
+            if (mainObject.mesh) {
+                if (!isDragging) {
+                    mainObject.mesh.rotation.y += 0.003;
+                    mainObject.pos.x += mainObject.vel.x;
+                    mainObject.pos.y += mainObject.vel.y;
                     const isMobile = window.innerWidth <= 768;
                     const xLimit = isMobile ? (window.innerWidth / 1000) * 1.5 : (window.innerWidth / 1000) * 2.0; 
                     const yLimit = isMobile ? (window.innerHeight / 1000) * 2.0 : (window.innerHeight / 1000) * 1.6;
-
-                    if (Math.abs(position.x) > xLimit) {
-                        posVelocity.x *= -0.85;
-                        position.x = Math.sign(position.x) * xLimit;
+                    
+                    if (Math.abs(mainObject.pos.x) > xLimit) {
+                        mainObject.vel.x *= -0.85;
+                        mainObject.pos.x = Math.sign(mainObject.pos.x) * xLimit;
                     }
-                    if (Math.abs(position.y) > yLimit) {
-                        posVelocity.y *= -0.85;
-                        position.y = Math.sign(position.y) * yLimit;
+                    if (Math.abs(mainObject.pos.y) > yLimit) {
+                        mainObject.vel.y *= -0.85;
+                        mainObject.pos.y = Math.sign(mainObject.pos.y) * yLimit;
                     }
-
-                    model.position.x = position.x;
-                    model.position.y = position.y;
-                    posVelocity.x *= 0.995;
-                    posVelocity.y *= 0.995;
-                    if(Math.abs(posVelocity.x) < 0.0005) posVelocity.x = 0.0005;
+                    mainObject.mesh.position.x = mainObject.pos.x;
+                    mainObject.mesh.position.y = mainObject.pos.y;
+                    mainObject.vel.x *= 0.995;
+                    mainObject.vel.y *= 0.995;
                 }
             }
+
+            for (let i = cans.length - 1; i >= 0; i--) {
+                const can = cans[i];
+                can.pos.x += can.vel.x;
+                can.pos.y += can.vel.y;
+                can.mesh.rotation.x += 0.01;
+                can.mesh.rotation.z += 0.01;
+
+                const isMobile = window.innerWidth <= 768;
+                const xLimit = isMobile ? (window.innerWidth / 1000) * 1.8 : (window.innerWidth / 1000) * 2.5; 
+                const yLimit = isMobile ? (window.innerHeight / 1000) * 2.8 : (window.innerHeight / 1000) * 2.0;
+
+                if (now - can.birthTime > can.lifespan) can.isDying = true;
+
+                if (!can.isDying) {
+                    if (Math.abs(can.pos.x) > xLimit) { can.vel.x *= -1; can.pos.x = Math.sign(can.pos.x) * xLimit; }
+                    if (Math.abs(can.pos.y) > yLimit) { can.vel.y *= -1; can.pos.y = Math.sign(can.pos.y) * yLimit; }
+                    
+                    if (mainObject.mesh) resolveCollision(can, mainObject);
+                    for (let j = i - 1; j >= 0; j--) resolveCollision(can, cans[j]);
+                } else {
+                    if (Math.abs(can.pos.x) > xLimit + 4 || Math.abs(can.pos.y) > yLimit + 4) {
+                        scene.remove(can.mesh);
+                        cans.splice(i, 1);
+                        spawnCan();
+                    }
+                }
+                can.mesh.position.x = can.pos.x;
+                can.mesh.position.y = can.pos.y;
+            }
+            if (cans.length < 2) spawnCan();
             renderer.render(scene, camera);
         }
 
