@@ -46,8 +46,8 @@
             .ui-layer { 
                 padding-left: 1.5rem; 
                 padding-right: 1.5rem;
-                padding-top: 2rem;
-                justify-content: center;
+                padding-top: 1.5rem; /* Reducido para que el menú suba */
+                justify-content: space-between; /* Mantiene el menú arriba y el texto abajo */
             }
             h1 {
                 font-size: 3.5rem !important; 
@@ -61,6 +61,9 @@
                 width: 50px !important;
                 height: 50px !important;
                 margin-bottom: 1.5rem !important;
+            }
+            .header-mobile {
+                margin-top: 0.5rem;
             }
         }
 
@@ -120,7 +123,8 @@
     <div id="canvas-container" class="fixed inset-0"></div>
 
     <div class="ui-layer">
-        <div class="flex justify-end items-start w-full">
+        <!-- Header ajustado para subir el menú en móvil -->
+        <div class="flex justify-end items-start w-full header-mobile">
             <div class="menu-btn interactive">Menu</div>
         </div>
 
@@ -224,12 +228,11 @@
         function applyResponsiveScale() {
             if (!model) return;
             const isMobile = window.innerWidth <= 768;
-            // ESCALA: 1.5 en desktop, 0.75 en móvil (50% menos)
             const scale = isMobile ? 0.75 : 1.5; 
             model.scale.set(scale, scale, scale);
             
             position.x = isMobile ? 0 : 1.2;
-            position.y = isMobile ? -0.5 : 0; // Ajuste leve de altura en móvil para no tapar texto
+            position.y = isMobile ? -0.5 : 0; 
         }
 
         function handleMouseMove(e) {
