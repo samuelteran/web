@@ -155,19 +155,21 @@
     </div>
 
     <script>
-        // Lógica del Contador de Visitas
+        // Lógica del Contador de Visitas (Actualizada con CounterAPI.dev)
         async function getVisits() {
+            const countElement = document.getElementById('count-number');
             try {
-                // Nota: Reemplaza 'samuelteranweb' con un nombre único para tu sitio
-                const namespace = "samuelteran.github.io";
-                const key = "home";
-                const response = await fetch(`https://api.countapi.xyz/hit/${namespace}/${key}`);
+                // Usamos counterapi.dev que es más estable
+                // 'samuelteran' es tu espacio y 'homepage' es la clave del contador
+                const response = await fetch(`https://api.counterapi.dev/v1/samuelteran/homepage/up`);
                 const data = await response.json();
-                document.getElementById('count-number').innerText = data.value.toLocaleString();
+                
+                if (data && data.count) {
+                    countElement.innerText = data.count.toLocaleString();
+                }
             } catch (error) {
-                // Si la API falla, ocultamos el contador o ponemos un número estático
-                document.getElementById('count-number').innerText = "1,024"; 
                 console.error("Error cargando contador:", error);
+                countElement.innerText = "ONLINE"; // En lugar de un número falso, ponemos un estado
             }
         }
 
